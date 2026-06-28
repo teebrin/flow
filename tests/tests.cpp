@@ -44,3 +44,14 @@ TEST(Tests, MultiObserve)
     ASSERT_EQ(replica1, 1);
     ASSERT_EQ(replica2, 2.0);
 }
+
+TEST(Tests, CoherentVariable)
+{
+    y::Observable source(1024);
+    const y::CoherentVariable doubled([](const int value) { return value * 2; }, source);
+    ASSERT_EQ(doubled, 2048.0f);
+
+    source = source + 1;
+
+    ASSERT_EQ(doubled, 2050.0f);
+}

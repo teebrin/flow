@@ -2,10 +2,12 @@
 #define Y_FLOW_H
 
 #include <functional>
+#include <memory>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace y {
-
-
 #ifdef Y_FLOW_HAVE_THREAD_CHECK_FUNCTION
 void flow_thread_check();
 #else
@@ -144,7 +146,7 @@ class Reactive: public Function, Observer<T...> {
     F action_;
 
 public:
-    explicit Reactive(F action, const Observable<T> & ...observable, bool skipInitialEvaluation = false)
+    explicit Reactive(F action, const Observable<T> & ...observable, const bool skipInitialEvaluation = false)
         : Function(skipInitialEvaluation)
         , Observer<T...>(observable..., *this)
         , action_(action)
@@ -182,6 +184,37 @@ constexpr ReactiveBuilder<F, T...> reactive(F action, const Observable<T> & ...o
     return ReactiveBuilder<F, T...>(action, observable...);
 }
 
+
+template<typename F, typename ...T>
+class CoherentVariable: public Observable<std::invoke_result_t<F, const T &...>> {
+    using value_type = std::invoke_result_t<F, const T &...>;
+
+    struct UpdateAction {
+        CoherentVariable * self;
+
+        void operator()(const T & ...args) const
+        {
+            self->refresh(args...);
+        }
+    };
+
+    F f_;
+    Reactive<UpdateAction, T...> reactive_;
+
+public:
+    CoherentVariable(F f, const Observable<T> & ...observable)
+        : Observable<value_type>(std::invoke(f, observable.get()...))
+        , f_(std::move(f))
+        , reactive_(UpdateAction{this}, observable..., true)
+    {
+    }
+
+private:
+    void refresh(const T & ...args)
+    {
+        Observable<value_type>::operator=(std::invoke(f_, args...));
+    }
+};
 
 } // namespace
 

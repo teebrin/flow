@@ -28,7 +28,7 @@ void Data::mark_outdated(const Consumer * consumer)
     never_evaluated = nullptr;
 
     for (; consumer; consumer = consumer->next_consumer_) {
-        if (auto is_already_outdated = consumer->related_function_.next_outdated_ || outdated == &consumer->related_function_.next_outdated_; !is_already_outdated) {
+        if (const auto is_already_outdated = consumer->related_function_.next_outdated_ || outdated == &consumer->related_function_.next_outdated_; !is_already_outdated) {
             *outdated = &consumer->related_function_;
             outdated = &(*outdated)->next_outdated_;
         }
